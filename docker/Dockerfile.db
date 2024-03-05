@@ -1,0 +1,6 @@
+
+ARG POSTGRES_VERSION=16-bookworm
+
+FROM postgres:$POSTGRES_VERSION
+
+COPY docker/db/init-user-db.sh /docker-entrypoint-initdb.d/init-user-db.sh
