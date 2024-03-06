@@ -1,0 +1,6 @@
+# This file contains port mapping to host.
+# It is excluded into dedicated file so it can be omitted, allowing
+# developer to run multiple instances of runtime environment
+# (eg when using git worktree)
+---
+service:

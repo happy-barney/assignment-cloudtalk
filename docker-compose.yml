@@ -1,0 +1,47 @@
+# - Application and related services without port binding
+# - Port binding is configured in docker-compose-ports.yml so multiple instances
+#   of development environment are possible.
+# - building, including intermediate images, is configured in
+#   docker/docker-compose-build.yml
+---
+services:
+  db:
+    image: assignment-db:dev-pg-${ASSIGNMENT_POSTGRES_VERSION}
+    volumes:
+      - assignment-db:/var/lib/postgresql/data
+    networks:
+      - assignment-net
+    environment:
+      POSTGRES_USER:     ${ASSIGNMENT_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${ASSIGNMENT_POSTGRES_PASSWORD:-dev-pwd}
+      # with version specific data path we can easily play with different postgres versions
+      PGDATA:            /var/lib/postgresql/data/${ASSIGNMENT_REVISION}-${ASSIGNMENT_POSTGRES_VERSION}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: assignment-app:${ASSIGNMENT_DEBIAN_RELEASE}-dev-pg-${ASSIGNMENT_POSTGRES_VERSION}
+    user: ${USER}
+    command: sleep infinity
+    working_dir: ${DEW_PROJECT_DIR}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ${DEW_PROJECT_DIR}:${DEW_PROJECT_DIR}
+#      - assignment-deps:${DEW_PROJECT_DIR}/node_modules
+    networks:
+      - assignment-net
+    environment:
+      SQITCH_CONFIG: ${DEW_PROJECT_DIR}/sqitch.conf
+
+volumes:
+  assignment-db:
+  assignment-deps:
+
+networks:
+  assignment-net: {}
+
