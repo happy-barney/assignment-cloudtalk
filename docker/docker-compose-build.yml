@@ -1,0 +1,33 @@
+# - Contains configuration (including dependencies) required to
+#   build application images
+# - May contain intermediate images
+# - Doesn't pollute main docker-compose.yml
+---
+services:
+  db:
+    image: assignment-db:dev-pg-${ASSIGNMENT_POSTGRES_VERSION}
+    build:
+      dockerfile: docker/Dockerfile.db
+      context: ../
+      args:
+        POSTGRES_VERSION: ${ASSIGNMENT_POSTGRES_VERSION}
+
+  base:
+    image: dev-base:${ASSIGNMENT_DEBIAN_RELEASE}
+    build:
+      dockerfile: docker/Dockerfile.dev-base
+      context: ../
+      args:
+        DEBIAN_RELEASE: ${ASSIGNMENT_DEBIAN_RELEASE}
+
+  app:
+    image: assignment-app:${ASSIGNMENT_DEBIAN_RELEASE}-dev-pg-${ASSIGNMENT_POSTGRES_VERSION}
+    depends_on:
+      - base
+    build:
+      dockerfile: docker/Dockerfile.app
+      context: ../
+      args:
+        DEBIAN_RELEASE: ${ASSIGNMENT_DEBIAN_RELEASE}
+
+
