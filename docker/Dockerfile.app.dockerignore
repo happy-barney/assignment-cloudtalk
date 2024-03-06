@@ -1,0 +1,4 @@
+# exclude everything by default
+*
+
+# include only what's needed
