@@ -16,3 +16,7 @@ export type Paged<T> = {
 	result:    T;
 };
 
+/* eslint-disable  @typescript-eslint/no-explicit-any */
+export type Tainted = any;
+/* eslint-enable  @typescript-eslint/no-explicit-any */
+
