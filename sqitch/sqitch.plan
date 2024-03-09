@@ -3,3 +3,4 @@
 
 init-schema 2024-03-07T00:00:00Z Branislav Zahradník <happy.barney@gmail.com> # Initialize schema
 init-table-product 2024-03-07T00:00:00Z Branislav Zahradník <happy.barney@gmail.com> # Initialize table product
+init-table-review 2024-03-07T00:00:00Z Branislav Zahradník <happy.barney@gmail.com> # Initialize table review
