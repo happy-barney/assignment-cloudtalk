@@ -9,6 +9,7 @@ import { ExpressOpenAPIArgs } from 'express-openapi';
 import { initialize         } from 'express-openapi';
 
 import middleware_error from './middleware/error';
+import middleware_model from './middleware/model';
 import v1_api_doc       from './api/v1/api-doc';
 import { config }       from './Config';
 
@@ -27,6 +28,8 @@ app.use (
 		}
 	)
 );
+
+app.use (middleware_model ());
 
 initialize (
 	{
