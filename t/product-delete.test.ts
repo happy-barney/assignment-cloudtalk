@@ -2,6 +2,7 @@
 import { X_Product_ID_Invalid } from '../lib/Validate/Product';
 
 import { arrange_product     } from './test-helper';
+import { arrange_review      } from './test-helper';
 import { assert              } from './test-helper';
 import { expect              } from './test-helper';
 import { isolated_db_context } from './test-helper';
@@ -57,6 +58,32 @@ describe ("Product.delete ()", () => {
 			expect (await model.product ().count ())
 				.equal (4)
 			;
+		})
+	);
+
+	it ("should delete existing row with reviews",
+		isolated_db_context (async (model) => {
+			const product = await arrange_product (model);
+			await arrange_review (model, { product_id: product.id });
+
+			await model.product ().delete (product.id);
+			assert.deepEqual (
+				(await model.query ('SELECT * FROM product')).rows,
+				[],
+				"there shouldn't be any product left"
+			);
+
+			assert.deepEqual (
+				(await model.query ('SELECT * FROM product_review')).rows,
+				[],
+				"there shouldn't be any product_review left"
+			);
+
+			assert.deepEqual (
+				(await model.query ('SELECT * FROM review')).rows,
+				[],
+				"there shouldn't be any review left"
+			);
 		})
 	);
 });

@@ -71,6 +71,15 @@ export class Product extends Submodel {
 	async delete (public_id: string) : Promise<void> {
 		Validate_Product.ensure_valid_public_id (public_id);
 
+		try {
+			await this.ensure_existing_public_id (public_id);
+		} catch (err) {
+			return;
+		}
+
+		const raw_id = await this.raw_id (public_id);
+		await this.query ('DELETE FROM review WHERE product_id = $1', [ raw_id ]);
+		await this.query ('DELETE FROM product_review WHERE product_id = $1', [ raw_id ]);
 		await this.query (query.delete, [ public_id ]);
 	}
 
