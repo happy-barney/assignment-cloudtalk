@@ -15,7 +15,7 @@ const public_columns  = [
 	'name',
 	'description',
 	'price',
-	'coalesce ((SELECT average FROM product_review WHERE product_id = id), 0) AS rating',
+	'coalesce ((SELECT round (average::numeric, 2)::float FROM product_review WHERE product_id = id), 0) AS rating',
 ].join (', ')
 ;
 const table_name      = 'product';
