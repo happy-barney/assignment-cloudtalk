@@ -57,6 +57,7 @@ describe ("Product.update ()", () => {
 				name:        "New name 1",
 				description: "New description",
 				price:       2.5,
+				rating:      0,
 			});
 		})
 	);
@@ -73,6 +74,7 @@ describe ("Product.update ()", () => {
 				name:        "Name 1",
 				description: null,
 				price:       2.5,
+				rating:      0,
 			});
 		})
 	);
@@ -88,6 +90,7 @@ describe ("Product.update ()", () => {
 				name:        "Name 1",
 				description: null,
 				price:       1.0,
+				rating:      0,
 			});
 		})
 	);
@@ -104,6 +107,7 @@ describe ("Product.update ()", () => {
 				name:        "Name 1",
 				description: null,
 				price:       1.0,
+				rating:      0,
 			});
 		})
 	);

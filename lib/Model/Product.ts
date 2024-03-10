@@ -10,7 +10,14 @@ import { Validate_Product } from '../Validate/Product';
 
 type Product_Unique_Column = 'name' | 'public_id';
 
-const public_columns  = 'public_id AS id, name, description, price';
+const public_columns  = [
+	'public_id AS id',
+	'name',
+	'description',
+	'price',
+	'coalesce ((SELECT average FROM product_review WHERE product_id = id), 0) AS rating',
+].join (', ')
+;
 const table_name      = 'product';
 
 const query = {

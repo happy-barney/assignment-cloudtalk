@@ -53,6 +53,7 @@ describe ("Product.fetch ()", () => {
 				name:        "Name",
 				description: null,
 				price:       2.5,
+				rating:      0,
 			});
 		})
 	);

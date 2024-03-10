@@ -60,12 +60,12 @@ describe ("Product.create ()", () => {
 				price:       1.0,
 			});
 
-
 			assert.deepEqual (result, {
 				id:          result.id,
 				name:        "New product with description",
 				description: "Some description",
 				price:       1.0,
+				rating:      0,
 			});
 		})
 	);
@@ -82,6 +82,7 @@ describe ("Product.create ()", () => {
 				name:        "New product without description",
 				description: null,
 				price:       1.0,
+				rating:      0,
 			});
 		})
 	);

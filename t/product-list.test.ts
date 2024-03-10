@@ -37,7 +37,13 @@ describe ("Product.list ()", () => {
 						size:  20,
 						pages: 1,
 					},
-					result: products,
+					result: [
+						{ ...products[0], rating: 0 },
+						{ ...products[1], rating: 0 },
+						{ ...products[2], rating: 0 },
+						{ ...products[3], rating: 0 },
+						{ ...products[4], rating: 0 },
+					],
 				})
 			;
 		})
@@ -64,8 +70,8 @@ describe ("Product.list ()", () => {
 						previous: 0,
 					},
 					result: [
-						products[2],
-						products[3],
+						{ ...products[2], rating: 0 },
+						{ ...products[3], rating: 0 },
 					],
 				})
 			;

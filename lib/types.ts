@@ -23,7 +23,8 @@ export type Product_Create = {
 };
 
 export type Product_Response = Product_Create & {
-	id: string;
+	id:     string;
+	rating: number;
 };
 
 export type Product_Update = Partial<Product_Create>;
