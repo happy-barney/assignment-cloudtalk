@@ -3,6 +3,8 @@ import { DBI              } from '../lib/DBI';
 import { Model            } from '../lib/Model';
 import { Product_Update   } from '../lib/types';
 import { Product_Response } from '../lib/types';
+import { Review_Update    } from '../lib/types';
+import { Review_Response  } from '../lib/types';
 import { config           } from '../lib/Config';
 
 export { assert } from 'chai';
@@ -37,6 +39,18 @@ export async function arrange_product (model: Model, product?: Product_Update) :
 		name:        product?.name || `product ${ Number (product_randomizer ++).toString (36) }`,
 		description: product?.description,
 		price:       product?.price || 1,
+	});
+
+	return result;
+}
+
+export async function arrange_review (model: Model, review?: Review_Update) : Promise<Review_Response> {
+	const result = await model.review ().create ({
+		product_id: review?.product_id || (await arrange_product (model)).id,
+		first_name: review?.first_name || "First name",
+		last_name:  review?.last_name  || "Last name",
+		comment:    review?.comment    || "Comment",
+		rating:     review?.rating     || 0,
 	});
 
 	return result;

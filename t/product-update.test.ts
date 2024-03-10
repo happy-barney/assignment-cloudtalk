@@ -12,7 +12,7 @@ describe ("Product.update ()", () => {
     it ("should detect invalid UUID value",
 		isolated_db_context (async (model) => {
 			try {
-				await model.product ().delete (invalid_uuid);
+				await model.product ().update (invalid_uuid, {});
 				assert.fail ("Expected to die but it lives");
 			} catch (err) {
 				expect (err)

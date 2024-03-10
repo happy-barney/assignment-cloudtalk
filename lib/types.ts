@@ -28,7 +28,20 @@ export type Product_Response = Product_Create & {
 
 export type Product_Update = Partial<Product_Create>;
 
+export type Review_Create = {
+	product_id: string,
+	first_name: string;
+	last_name:  string;
+	comment:    string;
+	rating:     number;
+};
+
+export type Review_Response = Review_Create & {
+	id: string;
+};
+
+export type Review_Update = Partial<Review_Create>;
+
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 export type Tainted = any;
 /* eslint-enable  @typescript-eslint/no-explicit-any */
-
