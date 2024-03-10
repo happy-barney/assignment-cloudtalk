@@ -8,8 +8,9 @@ import swaggerUi  from 'swagger-ui-express';
 import { ExpressOpenAPIArgs } from 'express-openapi';
 import { initialize         } from 'express-openapi';
 
-import v1_api_doc from './api/v1/api-doc';
-import { config } from './Config';
+import middleware_error from './middleware/error';
+import v1_api_doc       from './api/v1/api-doc';
+import { config }       from './Config';
 
 export const app = express();
 export default app;
@@ -27,15 +28,16 @@ app.use (
 	)
 );
 
-const initialization = {
-	app:         app,
-	apiDoc:      { ...v1_api_doc },
-	promiseMode: true,
-	paths:       path.resolve(__dirname, "api/v1/paths"),
-	routesGlob:  "**/*.{ts,js}",
-} as ExpressOpenAPIArgs;
-
-initialize (initialization);
+initialize (
+	{
+		app:             app,
+		apiDoc:          { ...v1_api_doc },
+		promiseMode:     true,
+		errorMiddleware: middleware_error,
+		paths:           path.resolve(__dirname, "api/v1/paths"),
+		routesGlob:      "**/*.{ts,js}",
+	} as ExpressOpenAPIArgs
+);
 
 // if we get run directly, start up the app.
 if (require.main === module) {
