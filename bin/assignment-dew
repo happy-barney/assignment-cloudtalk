@@ -81,7 +81,7 @@ function dew-component-commit-list-files () {
 
 function dew-component-branch () {
    case "${1:-}" in
-       test)
+       sanity | test)
            local command="$1"; shift
 		   dew-git-rebase-exec $(dew-git-fork-point "$@") commit "${command}" "$@"
            ;;
@@ -328,6 +328,10 @@ o : ${COMPOSE_PROJECT_NAME:=$(basename $DEW_PROJECT_DIR)}
 # Instance functions
 # ###################################################################
 
+function application-dew-sanity () {
+    o dew node node_modules/eslint/bin/eslint.js --no-error-on-unmatched-pattern -c ".eslint-$1.json" .
+}
+
 function assignment-dew-component-env-docker-compose-up () {
     dew-docker-compose up --no-start
 
@@ -345,6 +349,7 @@ function assignment-dew-component-commit {
 
     case "${command}" in
         list-tests) o dew-component-commit-list-files '\.test\.ts$' ;;
+        sanity)     application-dew-sanity commit ;;
         test)       o ${DEW_PROGRAM} test $( assignment-dew-component-commit list-tests ) ;;
     esac
 }
@@ -456,6 +461,8 @@ function assignment-dew () {
 
         branch)         shift; dew-component-branch "$@" ;;
         commit)         shift; assignment-dew-component-commit "$@" ;;
+
+        sanity)         application-dew-sanity full ;;
 
         *)
             echo "Unknown command '${command}'"
