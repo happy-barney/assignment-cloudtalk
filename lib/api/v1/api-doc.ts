@@ -6,7 +6,27 @@ export default {
 		version: "1.0.0",
 	},
 	components: {
-		responses: {
+		parameters: {
+			Page_Size:   {
+				name:        'size',
+				description: 'max number of results to return per page. Default: 10',
+				in:          'query',
+				schema:      {
+					type:   'number',
+					minimum: 10,
+				},
+			},
+			Page_Number: {
+				name:        'page',
+				description: 'Which page of results to return. Pages are zero based.',
+				in:          'query',
+				schema:      {
+					type: 'number',
+					minimum: 0,
+				},
+			}
+		},
+		responses:  {
 			Bad_Request:   {
 				description: 'Something went terribly wrong',
 				content: {
@@ -39,8 +59,54 @@ export default {
 					},
 				},
 			},
+			Product_List:  {
+				description: 'List of products',
+				content:     {
+					'application/json': {
+						schema: {
+							type: 'object',
+							properties: {
+								page_info: {
+									$ref: '#/components/schemas/Page_Info',
+								},
+								products: {
+									type: 'array',
+									items: {
+										$ref: '#/components/schemas/Product_Response',
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		},
-		schemas: {
+		schemas:    {
+			Page_Info:        {
+				type:        'object',
+				description: 'paging',
+				required:    [ 'size', 'pages' ],
+				properties:  {
+					size:     {
+						type:        'number',
+						description: 'Page size',
+					},
+					pages:    {
+						type:        'number',
+						description: 'Number of available pages using this page size',
+					},
+					next:     {
+						type:        'number',
+						description: 'If exists, number of next page',
+						minimum:     1,
+					},
+					previous: {
+						type:        'number',
+						description: 'If exists, number of previous page (pages are zero based)',
+						minimum:     0,
+					},
+				},
+			},
 			Product_Create:   {
 				type:        'object',
 				description: 'Data of new product',
