@@ -99,6 +99,27 @@ export default {
 					},
 				},
 			},
+			Review_List:  {
+				description: 'List of reviews',
+				content:     {
+					'application/json': {
+						schema: {
+							type: 'object',
+							properties: {
+								page_info: {
+									$ref: '#/components/schemas/Page_Info',
+								},
+								reviews: {
+									type: 'array',
+									items: {
+										$ref: '#/components/schemas/Review_Response',
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		schemas:    {
 			Page_Info:        {
