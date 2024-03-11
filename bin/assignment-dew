@@ -1,0 +1,536 @@
+#!/bin/bash
+
+set -eu
+
+# App configuration
+# ###################################################################
+
+: ${ASSIGNMENT_REVISION:=dev}
+: ${ASSIGNMENT_POSTGRES_VERSION:=16}
+: ${ASSIGNMENT_DEBIAN_RELEASE:=bookworm}
+: ${ASSIGNMENT_NODEJS_VERSION:=17.x}
+
+export ASSIGNMENT_REVISION
+export ASSIGNMENT_POSTGRES_VERSION
+export ASSIGNMENT_DEBIAN_RELEASE
+export ASSIGNMENT_NODEJS_VERSION
+
+# Dew configuration
+# ###################################################################
+
+# `o` outputs command only when set to 1
+: ${DEW_O_TRACE:=0}
+DEW_O_INDENT_LEVEL=0
+DEW_O_INDENT_STEP=4
+
+# Name of dew instance
+DEW_PROGRAM="${0##*/}"
+DEW_ENVIRONMENT="docker-compose"
+
+# Docker compose file which should be used when building images
+# if not set, DEW_COMPOSE_FILE is used
+DEW_COMPOSE_BUILD_FILE="docker/docker-compose-build.yml"
+
+# Docker compose file, default docker-compose.yml
+DEW_COMPOSE_FILE="docker-compose.yml"
+
+# variables propagated (when set) into docker containers with commands
+# `run` and `exec
+declare -a DEW_DOCKER_ENV=(
+)
+
+# Generic `dew` functions
+# ###################################################################
+
+# save STDERR so `o` will work even with 2>/dev/null
+exec 3>&1
+
+function o () {
+    if [ "${DEW_O_TRACE}" == "1" ] ; then
+        printf -->&3 "%s:%*s%s\n" "${DEW_PROGRAM}" $DEW_O_INDENT_LEVEL "" "$(printf " %q" "$@")"
+    fi
+
+    local DEW_O_INDENT_LEVEL=$(($DEW_O_INDENT_LEVEL + $DEW_O_INDENT_STEP))
+    eval "$@"
+}
+
+function dew-array-contains () {
+    local i what="$1"; shift
+
+    for i in "$@" ; do
+        [ "x${i}" == "x${what}" ] && return 0
+    done
+
+    return 1
+}
+
+function dew-component-commit-list-files () {
+    local pattern="${1:-^}"
+
+    (
+        git diff-tree --no-commit-id --name-status HEAD -r \
+            | grep -v ^D \
+            | cut -d'	' -f2
+        git status --untracked-files=no --porcelain \
+            | grep -v ^D \
+            | cut -c4- \
+    ) \
+        | grep -P "$pattern" \
+        | sort -u
+}
+
+function dew-component-branch () {
+   case "${1:-}" in
+       sanity | test)
+           local command="$1"; shift
+		   dew-git-rebase-exec $(dew-git-fork-point "$@") commit "${command}" "$@"
+           ;;
+       fork-point) dew-git-fork-point ;;
+    esac
+}
+
+function dew-component-env () {
+    case "${DEW_ENVIRONMENT}" in
+        docker-compose) dew-component-env-docker-compose "$@" ;;
+    esac
+}
+
+function dew-component-env-docker-compose () {
+    case "${1:-}" in
+        build)      shift; dew-component-env-docker-compose-build   "$@" ;;
+        down)       shift; dew-component-env-docker-compose-down    "$@" ;;
+        exec)       shift; dew-component-env-docker-compose-exec    "$@" ;;
+        rebuild)    shift; dew-component-env-docker-compose-rebuild "$@" ;;
+        restart)    shift; dew-component-env-docker-compose-restart "$@" ;;
+        run)        shift; dew-component-env-docker-compose-run     "$@" ;;
+        status)     shift; dew-component-env-docker-compose-status  "$@" ;;
+        volume)     shift; dew-component-env-docker-compose-volume  "$@" ;;
+        up)         shift; dew-component-env-docker-compose-up      "$@" ;;
+    esac
+}
+
+function dew-component-env-docker-compose-build () {
+    # BUILDKIT needed to be able to use per-dockerfile dockerignore
+    o export DOCKER_BUILDKIT=1
+    dew-docker-compose \
+        --file "${DEW_PROJECT_DIR}/${DEW_COMPOSE_BUILD_FILE}" \
+        build \
+        --build-arg OUTER_USER="${USER}" \
+        --build-arg OUTER_UID="${UID}" \
+        --build-arg OUTER_HOME="${HOME}" \
+        --build-arg OUTER_GID="$(id -g)" \
+        "$@"
+}
+
+function dew-component-env-docker-compose-down () {
+    dew-docker-compose down
+}
+
+function dew-component-env-docker-compose-exec () {
+    dew-docker-compose-is-running || ${DEW_PROGRAM} up
+    dew-docker-compose exec "$@"
+}
+
+function dew-component-env-docker-compose-rebuild () {
+    local is_running=;
+    dew-docker-compose-is-running && is_running=1
+
+    [[ -n $is_running ]] && $DEW_PROGRAM env down
+
+    $DEW_PROGRAM env build
+
+    [[ -n $is_running ]] && $DEW_PROGRAM env up
+}
+
+function dew-component-env-docker-compose-restart () {
+    local is_running=;
+    dew-docker-compose-is-running && is_running=1
+
+    [[ -n $is_running ]] && $DEW_PROGRAM env down
+    $DEW_PROGRAM env up
+}
+
+function dew-component-env-docker-compose-run () {
+    dew-docker-compose run "$@"
+}
+
+function dew-component-env-docker-compose-status () {
+    if dew-docker-compose-is-running; then
+        dew-docker-compose ps
+    else
+        dew-error 'Runtime environment is not running'
+    fi
+}
+
+function dew-component-env-docker-compose-volume () {
+    local command="${1:-ls}"; shift || true
+    case "${command}" in
+        ls)
+            local options=(
+                --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}"
+            );
+            while [[ -n ${1:-} ]] ; do
+                case "$1" in
+                    --format)       options+=( $1 "$2" ); shift 2 ;;
+                    --format=*)     options+=( "$1" ); shift ;;
+                    ?*)             options+=( --filter "label=com.docker.compose.volume=${volume}" )
+                                    break
+                                    ;;
+                esac
+            done
+
+            o docker volume "${command}" "${options[@]}"
+            ;;
+        rm) o docker volume "${command}" $( o dew-component-env-docker-compose-volume ls "$@" )
+            ;;
+    esac
+}
+
+function dew-component-app-node () {
+    local command="$1"; shift
+    local service="$1"; shift
+
+    case "${command}" in
+        install)        $DEW_PROGRAM $service run npm install "$@" ;;
+        npm)            $DEW_PROGRAM $service run npm "$@" ;;
+        tsc)            $DEW_PROGRAM $service run tsc "$@" ;;
+        run)            $DEW_PROGRAM $service run "$@" ;;
+    esac
+}
+
+function dew-docker-compose () {
+    local command="$1"; shift
+    local env=
+    local options=()
+
+    case "${command}" in
+        run | exec | run-or-exec)
+            if dew-docker-compose-is-running "$1"; then
+                command="exec"
+            else
+                command="run"
+                ! dew-array-contains "--rm" "$@" && options+=("--rm")
+            fi
+            ;;&
+
+        run | exec )
+            [ ! -t 1 ] && options+=("-T")
+            dew-array-contains "-T" "{options[0]}" "$@" && exec < /dev/null
+
+            for env in ${DEW_DOCKER_ENV[@]} TERM ; do
+                if [ -n "${!env}" ] ; then
+                    options+=(-e "${env}=${!env}")
+                fi
+            done
+            ;;&
+    esac
+
+    o docker-compose $command "${options[@]}" "$@"
+}
+
+function dew-docker-compose-is-running () {
+    if [[ -z "${1:-}" ]] ; then
+        [[ $(dew-docker-compose ps -q) ]] && return 0
+        return 1
+    fi
+
+    local container_id=$(dew-docker-compose ps -q "$1")
+    if [[ -z "${container_id}" ]]; then
+        return 1
+    fi
+
+    local status=$(docker inspect $container_id | jq -r '.[0].State.Status')
+    case "$status" in
+        running) return 0 ;;
+        * ) return 1 ;;
+    esac
+
+    return 1
+}
+
+function dew-error () {
+    echo >&2 "$DEW_PROGRAM: ERROR: $@"
+	return 1
+}
+
+function dew-git () {
+    o git "$@"
+}
+
+function dew-git-fork-point () {
+    local commit="${1:-}"
+
+    if [[ -z "$commit" ]] ; then
+        commit=$(dew-git-head-branch)@{u}
+    fi
+
+    git merge-base --fork-point "$commit"
+}
+
+function dew-git-head-branch () {
+    local rebase_head_file=
+    local rebase_type=
+    local head=
+
+    for rebase_type in rebase-merge rebase-apply ; do
+        rebase_head_file="$( dew-git rev-parse --git-path $rebase_type/head-name )"
+        if [[ -e "$rebase_head_file" ]] ; then
+            dew-git rev-parse --abbrev-ref $(cat "$rebase_head_file")
+            return 0
+        fi
+    done
+
+    dew-git symbolic-ref --short HEAD
+}
+
+function dew-git-rebase-exec () {
+	local branch="$1" ; shift
+
+	git rebase \
+		--exec "${BASH_SOURCE[0]} $*" \
+        -- \
+		"${branch}"
+}
+
+function dew-setup-compose-file () {
+    if [ -e "${DEW_PROJECT_DIR}"/docker-compose.worktree.yml ] ; then
+        o export COMPOSE_FILE=docker-compose.yml:docker-compose.worktree.yml
+    else
+        o export COMPOSE_FILE=docker-compose.yml:docker-compose.override.yml
+    fi
+}
+
+function dew-setup-project-dir () {
+    pushd . >/dev/null
+
+    cd "$(dirname "${BASH_SOURCE}")"
+    while [ "$PWD" != "/" ] ; do
+        [ -e "${DEW_COMPOSE_FILE}" ] && break;
+        [ -e "${DEW_COMPOSE_BUILD_FILE}" ] && break;
+
+        cd ..
+    done
+
+    pwd
+
+    popd >/dev/null
+}
+
+# Environment
+# ###################################################################
+
+# Directory where docker-compose.yml resides
+o DEW_PROJECT_DIR="$( dew-setup-project-dir )"
+export DEW_PROJECT_DIR
+
+o : ${COMPOSE_PROJECT_NAME:=$(basename $DEW_PROJECT_DIR)}
+
+# Instance functions
+# ###################################################################
+
+function application-dew-sanity () {
+    o dew node node_modules/eslint/bin/eslint.js --no-error-on-unmatched-pattern -c ".eslint-$1.json" .
+}
+
+function assignment-dew-component-env-docker-compose-up () {
+    dew-docker-compose up --no-start
+
+    $DEW_PROGRAM installdeps
+
+    dew-docker-compose up -d db
+    $DEW_PROGRAM deploy
+
+	[[ -n "$@" ]] && dew-docker-compose up -d "$@"
+    dew-docker-compose up -d
+}
+
+function assignment-dew-component-commit {
+    local command="${1:-help}"; shift || true;
+
+    case "${command}" in
+        list-tests) o dew-component-commit-list-files '\.test\.ts$' ;;
+        sanity)     application-dew-sanity commit ;;
+        test)       o ${DEW_PROGRAM} test $( assignment-dew-component-commit list-tests ) ;;
+    esac
+}
+
+function assignment-component-app () {
+    local command="${1:-}"; shift || true
+    case "${command:-}" in
+        install)        ;&
+        tsc)            dew-component-app-node $command app "$@" ;;
+        run)            ;&
+        exec)           dew-component-env-docker-compose $command app "$@"
+                        ;;
+        bash)           ;&
+        node)           dew-component-env-docker-compose exec app $command "$@" ;;
+        installdeps)    dew-component-app-node install app --save-dev "$@" ;;
+        test)           o dew-component-app-node run app \
+                          ./node_modules/mocha/bin/mocha.js \
+                          --reporter tap \
+                          -r ts-node/register \
+                          -r tsconfig-paths/register \
+                          "${@:-t/**/*.test.ts}"
+                        ;;
+        *)              assignment-dew-help "Unknown app control command '$command'" ;;
+    esac
+}
+
+function assignment-component-env () {
+    case "${1:-}" in
+        build)      ;&
+        down)       ;&
+        exec)       ;&
+        rebuild)    ;&
+        restart)    ;&
+        volume)     ;&
+        status)     dew-component-env  "$@" ;;
+        up)         shift; assignment-dew-component-env-docker-compose-up "$@" ;;
+        *)          assignment-dew-help "Unknown env control command '${1:-}'" ;;
+    esac
+}
+
+function assignment-component-db () {
+    local database="assignment"
+
+    case "${1:-}" in
+        psql)       dew-component-env exec db psql --user assignment "${database}" ;;
+        deploy)     shift; assignment-component-app exec sqitch deploy "${database}" ;;
+        revert)     ;&
+        revert-to)  shift
+                    local options=()
+                    local change="${1:-ROOT}"; shift || true
+                    case "${change}" in
+                        /*)             options+=(--to "${change:1}") ;;
+                        @*)             ;&
+                        ROOT)           options+=(--to "${change}") ;;
+                        ^*)             options+=(--to "@HEAD${change}") ;;
+                        ~*)             options+=(--to "@ROOT${change}") ;;
+                        --fork-point)   change="$(dew-git-fork-point "$@")" ;&
+                        ?*)
+                            o git rev-parse --verify "${change}" > /dev/null
+
+                            local commit_change="$(git show "${change}":sqitch/sqitch.plan | tail -1 | cut -d' ' -f1)"
+                            options+=(--to "${commit_change}")
+                            ;;
+                    esac
+
+                    assignment-component-app exec sqitch revert -y "${options[@]}" "${database}"
+                    ;;
+        *)          assignment-dew-help "Unknown db control command '${1:-}'" ;;
+    esac
+}
+
+function assignment-dew () {
+    case "${1:-}" in
+        -o | --trace)
+            shift
+            DEW_O_TRACE=1
+            assignment-dew "$@"
+            ;;
+
+        help)           assignment-dew-help ;;
+
+        # runtime environment commands
+        runtime-env)    ;&
+        env)            shift ;&
+        build)          ;&
+        down)           ;&
+        rebuild)        ;&
+        restart)        ;&
+        status)         ;&
+        up)             assignment-component-env "$@" ;;
+
+        # database commands
+        db)             shift ;&
+        deploy)         ;&
+        psql)           ;&
+        revert)         ;&
+        revert-to)      assignment-component-db "$@" ;;
+
+        # app commands
+        app)            shift ;&
+        exec)           ;&
+        installdeps)    ;&
+        node)           ;&
+        run)            ;&
+        npm)            ;&
+        tsc)            ;&
+        install)        ;&
+        test)           assignment-component-app "$@" ;;
+
+        branch)         shift; dew-component-branch "$@" ;;
+        commit)         shift; assignment-dew-component-commit "$@" ;;
+
+        sanity)         application-dew-sanity full ;;
+
+        *)
+            echo "Unknown command '${command}'"
+            ;;
+    esac
+}
+
+function assignment-dew-help () {
+    if [ -n "$*" ]; then
+        exec 1>&2
+        echo "$*"
+        echo
+    fi
+
+    cat <<EOF
+USAGE
+    $DEW_PROGRAM command [subcommand] ...
+
+OPTIONS
+    --trace, -o
+
+COMMANDS
+(subcommands marked with (*) available as commands as well)
+
+# runtime environment commands
+    env
+        build               (*) build all images
+        down                (*) stop service(s)
+        rebuild             (*) rebuild all images (stops and starts if running)
+        restart             (*) stop and start service
+        status              (*) show service status
+        up                  (*) start services(s) (includes 'installdeps' and 'deploy'
+        volume              similar to docker volume
+            ls              lists created volumes
+            rm VOLUME?      remove project volumes (or specified one only)
+
+# database related commands
+    db
+        deploy              (*) deploy missing migrations (if any)
+        psql                (*) run psql, creates .psql_history in project root
+        revert-to COMMIT    (*) revert database to the state of COMMIT
+
+# application service commands
+    app
+        install-deps        (*) install dependencies
+        restart             stop and start
+        start               start app container unless running
+        stop                stop app container if running
+        test                (*) run tests
+
+# branch commands
+    branch
+        checkout BRANCH     save checkout of new branch
+                            includes db revert/deploy and installdeps
+                            if BRANCH doesn't exist yet, creates
+        test                run 'commit test' for each commit in branch
+
+# commit commands
+    commit
+        test                run tests modified since fork-point
+                            includes: committed, staged, and untracked
+
+# misc commands
+    rebase                  wrapper around git rebase
+                            before: reverts db to --fork-point
+                            after: deploys db and installs dependencies
+    help                    prints this info
+EOF
+}
+
+o assignment-dew "$@"

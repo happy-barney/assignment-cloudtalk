@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "eslint": "^8.57.0",
+    "eslint-plugin-diff": "^2.0.3",
+    "typescript-eslint": "^7.1.1"
+  }
+}

@@ -1,0 +1,35 @@
+
+ARG DEBIAN_RELEASE=bookworm
+
+FROM debian:${DEBIAN_RELEASE}
+
+ARG DEBIAN_RELEASE
+ARG OUTER_USER
+ARG OUTER_UID
+ARG OUTER_GID
+ARG OUTER_HOME
+
+RUN true \
+ && apt update \
+ && apt-get -y upgrade \
+ && apt install -y \
+    apt-transport-https \
+    apt-utils \
+    ca-certificates \
+	curl \
+    gnupg \
+    sqitch \
+    sudo \
+ && groupadd --gid ${OUTER_GID} ${OUTER_USER} \
+ && adduser --disabled-password --gid ${OUTER_GID} --uid ${OUTER_UID} ${OUTER_USER} \
+ && adduser ${OUTER_USER} sudo \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists \
+ && true
+
+COPY --chown=root:root docker/dev-base/sudoers /etc/sudoers
+
+ENV DEBIAN_RELEASE=${DEBIAN_RELEASE}
+
+WORKDIR ${OUTER_HOME}
+USER ${OUTER_USER}

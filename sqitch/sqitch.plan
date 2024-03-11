@@ -1,0 +1,4 @@
+%syntax-version=1.0.0
+%project=sqitch
+
+init-schema 2024-03-07T00:00:00Z Branislav Zahradník <happy.barney@gmail.com> # Initialize schema

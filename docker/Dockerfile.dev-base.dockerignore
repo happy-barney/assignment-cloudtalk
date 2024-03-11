@@ -1,0 +1,5 @@
+# exclude everything by default
+*
+
+# include only what's needed
+!/docker/dev-base/
