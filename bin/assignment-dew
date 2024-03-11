@@ -464,6 +464,11 @@ function assignment-dew () {
 
         sanity)         application-dew-sanity full ;;
 
+		serve)
+			o export COMPOSE_FILE=docker-compose.yml:docker-compose-ports.yml
+			${DEW_PROGRAM} up
+			;;
+
         *)
             echo "Unknown command '${command}'"
             ;;

@@ -2,3 +2,4 @@
 *
 
 # include only what's needed
+!/docker/app/

@@ -4,3 +4,8 @@
 # (eg when using git worktree)
 ---
 service:
+  app:
+    command: /docker-entrypoint.sh
+    ports:
+      - 3000:3000
+
