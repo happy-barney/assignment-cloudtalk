@@ -265,6 +265,28 @@ export default {
 					},
 				},
 			},
+			Review_Update:    {
+				type:        'object',
+				description: 'Data of new review',
+				properties:  {
+					first_name: {
+						type: 'string',
+						description: 'First name of reviewer',
+					},
+					last_name:  {
+						type: 'string',
+						description: 'Last name of reviewer',
+					},
+					comment:    {
+						type:        'string',
+						description: 'Review text',
+					},
+					rating:     {
+						type: 'number',
+						enum: [ 0, 1, 2, 3, 4, 5 ],
+					},
+				},
+			},
 		},
 	},
 	paths: {
