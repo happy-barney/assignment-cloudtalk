@@ -150,6 +150,25 @@ export default {
 					},
 				},
 			},
+			Product_Update:   {
+				type:        'object',
+				description: 'Data of new product',
+				properties:  {
+					name:        {
+						type:        'string',
+						description: 'Name of new product',
+						minLength:   3,
+					},
+					description: {
+						description: 'Description of new product',
+						type: 'string',
+					},
+					price:       {
+						type:             'number',
+						// exclusiveMinumum: 0,
+					},
+				},
+			},
 		},
 	},
 	paths: {
