@@ -24,7 +24,16 @@ export default {
 					type: 'number',
 					minimum: 0,
 				},
-			}
+			},
+			Product_ID:  {
+				name:        'product_id',
+				description: 'ID of product to delete',
+				in:          'path',
+				schema:      {
+					type:   'string',
+					format: 'uuid',
+				},
+			},
 		},
 		responses:  {
 			Bad_Request:   {
