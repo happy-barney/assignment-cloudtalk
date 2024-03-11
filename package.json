@@ -1,7 +1,15 @@
 {
   "dependencies": {
+    "@types/chai": "^4.3.12",
+    "@types/mocha": "^10.0.6",
+    "@types/pg": "^8.11.2",
+    "chai": "^4.4.1",
     "eslint": "^8.57.0",
     "eslint-plugin-diff": "^2.0.3",
+    "mocha": "^10.3.0",
+    "pg": "^8.11.3",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript-eslint": "^7.1.1"
   }
 }
