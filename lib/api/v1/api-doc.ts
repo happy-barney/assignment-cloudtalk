@@ -89,6 +89,16 @@ export default {
 					},
 				},
 			},
+			Review:       {
+				description: 'Single review',
+				content:     {
+					'application/json': {
+						schema: {
+							$ref: '#/components/schemas/Review_Response',
+						},
+					},
+				},
+			},
 		},
 		schemas:    {
 			Page_Info:        {
@@ -166,6 +176,62 @@ export default {
 					price:       {
 						type:             'number',
 						// exclusiveMinumum: 0,
+					},
+				},
+			},
+			Review_Create:    {
+				type:        'object',
+				description: 'Data of new review',
+				required:    [ 'first_name', 'last_name', 'rating' ],
+				properties:  {
+					first_name: {
+						type: 'string',
+						description: 'First name of reviewer',
+					},
+					last_name:  {
+						type: 'string',
+						description: 'Last name of reviewer',
+					},
+					comment:    {
+						type:        'string',
+						description: 'Review text',
+					},
+					rating:     {
+						type: 'number',
+						enum: [ 0, 1, 2, 3, 4, 5 ],
+					},
+				},
+			},
+			Review_Response:  {
+				type:        'object',
+				description: 'Data of new review',
+				required:    [ 'review_id', 'product_id', 'first_name', 'last_name', 'rating' ],
+				properties:  {
+					review_id: {
+						type:        'string',
+						description: 'ID of this review',
+						format:      'uuid',
+					},
+					product_id: {
+						type:        'string',
+						description: 'ID of product this review is for',
+						format:      'uuid',
+					},
+					first_name: {
+						type: 'string',
+						description: 'First name of reviewer',
+					},
+					last_name:  {
+						type: 'string',
+						description: 'Last name of reviewer',
+					},
+					comment:    {
+						type:        'string',
+						description: 'Review text',
+					},
+					rating:     {
+						type: 'number',
+						enum: [ 0, 1, 2, 3, 4, 5 ],
 					},
 				},
 			},
