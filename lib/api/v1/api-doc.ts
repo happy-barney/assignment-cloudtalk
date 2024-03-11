@@ -34,6 +34,15 @@ export default {
 					format: 'uuid',
 				},
 			},
+			Review_ID:   {
+				name:        'review_id',
+				description: 'ID of review',
+				in:          'path',
+				schema:      {
+					type:   'string',
+					format: 'uuid',
+				},
+			},
 		},
 		responses:  {
 			Bad_Request:   {
